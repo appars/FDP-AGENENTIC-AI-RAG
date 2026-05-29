@@ -1,0 +1,47 @@
+name: AI Deploy (Simple)
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test-decide:
+    runs-on: ubuntu-latest
+    outputs:
+      decision: ${{ steps.ai.outputs.decision }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - run: pip install flask requests
+
+      - name: Build & Test
+        run: |
+          npm install && npm run build 2>&1 | tee build.log
+          npm test -- --watchAll=false 2>&1 | tee test.log
+        continue-on-error: true
+
+      - name: AI Decision
+        id: ai
+        run: |
+          python3 simple_agent.py \
+            --branch "${{ github.ref_name }}" \
+            --commit "$(git rev-parse --short HEAD)" \
+            --message "$(git log -1 --pretty=%B)" \
+            --build-log "$(cat build.log)" \
+            --test-log "$(cat test.log)" \
+            --build-number ${{ github.run_number }} > decision.json
+          
+          echo "decision=$(jq -r '.decision' decision.json)" >> $GITHUB_OUTPUT
+
+  deploy:
+    needs: build-test-decide
+    runs-on: ubuntu-latest
+    if: needs.build-test-decide.outputs.decision == 'DEPLOY'
+    steps:
+      - run: echo "✓ Deploying to production"

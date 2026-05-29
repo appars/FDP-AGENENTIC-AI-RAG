@@ -1,0 +1,126 @@
+pipeline {
+    agent any
+    
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 30, unit: 'MINUTES')
+    }
+    
+    environment {
+        COMMIT_SHA = sh(script: "git rev-parse HEAD", returnStdout: true).trim().take(8)
+        COMMIT_MSG = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
+        BRANCH = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                script {
+                    echo "Building..."
+                    sh '''
+                        npm install
+                        npm run build 2>&1 | tee build.log
+                    '''
+                }
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                script {
+                    echo "Running tests..."
+                    sh '''
+                        npm test -- --coverage --watchAll=false > test.log 2>&1 || true
+                    '''
+                }
+            }
+        }
+        
+        stage('HuggingFace AI Decision') {
+            steps {
+                script {
+                    echo "Asking Hugging Face AI Agent..."
+                    
+                    // Collect build data
+                    def buildLog = readFile('build.log').take(1500)
+                    def testLog = readFile('test.log').take(1500)
+                    
+                    // Call agent via Python
+                    def response = sh(
+                        script: '''
+                            python3 hf_agent.py \\
+                              --branch "${BRANCH}" \\
+                              --commit "${COMMIT_SHA}" \\
+                              --message "${COMMIT_MSG}" \\
+                              --build-log "${BUILD_LOG}" \\
+                              --test-log "${TEST_LOG}" \\
+                              --build-number ${BUILD_NUMBER}
+                        ''',
+                        returnStdout: true
+                    ).trim()
+                    
+                    echo "Agent response: ${response}"
+                    
+                    // Parse JSON response
+                    def decision = readJSON text: response
+                    
+                    env.DECISION = decision.decision
+                    env.CONFIDENCE = decision.confidence
+                    env.REASONING = decision.reasoning
+                    env.SHOULD_DEPLOY = (decision.decision == 'DEPLOY')
+                    
+                    echo "Decision: ${env.DECISION}"
+                    echo "Confidence: ${env.CONFIDENCE}"
+                    echo "Reasoning: ${env.REASONING}"
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            when {
+                expression { env.SHOULD_DEPLOY == 'true' }
+            }
+            steps {
+                script {
+                    echo "Deploying to production..."
+                    sh '''
+                        docker build -t myapp:${COMMIT_SHA} .
+                        docker push myapp:${COMMIT_SHA}
+                        
+                        kubectl set image deployment/app \\
+                          app=myapp:${COMMIT_SHA} \\
+                          -n production --record
+                        
+                        kubectl rollout status deployment/app \\
+                          -n production --timeout=5m
+                    '''
+                }
+            }
+        }
+        
+        stage('Notify') {
+            when {
+                expression { env.SHOULD_DEPLOY != 'true' }
+            }
+            steps {
+                script {
+                    echo "Decision: ${DECISION}"
+                    echo "Reason: ${REASONING}"
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            archiveArtifacts artifacts: '*.log', allowEmptyArchive: true
+            cleanWs()
+        }
+    }
+}

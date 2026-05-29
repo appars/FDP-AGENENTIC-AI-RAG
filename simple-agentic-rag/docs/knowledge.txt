@@ -1,0 +1,7 @@
+RAG stands for Retrieval Augmented Generation.
+
+LangChain is a framework for building LLM applications.
+
+Vector databases store embeddings and support similarity search.
+
+FAISS is a vector similarity search library from Meta.

@@ -1,0 +1,9 @@
+RAG stands for Retrieval Augmented Generation.
+
+LangGraph is used to create multi-step workflows for AI agents.
+
+FAISS is a vector similarity search library developed by Meta.
+
+Vector databases are used to store embeddings and retrieve similar content.
+
+LangChain is a framework for building applications using Large Language Models.

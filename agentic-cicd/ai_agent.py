@@ -67,6 +67,7 @@ if __name__ == "__main__":
         decision = "STOP"
         with open("decision.txt", "w") as f:
             f.write(decision)
+        print("Reason: test-results.log not found, so deployment is blocked.")
         print("Agent Decision:", decision)
         raise SystemExit(0)
 
@@ -76,7 +77,16 @@ if __name__ == "__main__":
 
     decision = response["messages"][-1].content.strip()
 
+    reason = "Agent analyzed test-results.log and selected the safest action."
+    if decision == "STOP":
+        reason = "Agent found test failure or non-retryable issue in test-results.log."
+    elif decision == "RETRY":
+        reason = "Agent detected a possible transient issue (network/timeout), so retry is recommended."
+    elif decision == "GO":
+        reason = "Agent found no blocking failures in test-results.log."
+
     with open("decision.txt", "w") as f:
         f.write(decision)
 
+    print("Reason:", reason)
     print("Agent Decision:", decision)

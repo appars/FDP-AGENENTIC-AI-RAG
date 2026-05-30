@@ -8,7 +8,7 @@ def main():
 
 
 def test_divide():
-    assert divide(10, 2) == 5
+    assert divide(10, 2) == 4
 
 
 if __name__ == "__main__":

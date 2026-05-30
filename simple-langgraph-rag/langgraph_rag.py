@@ -15,6 +15,7 @@ class GraphState(TypedDict):
     question: str
     retrieved_docs: str
     answer: str
+    retries: int
 
 
 # ----------------------
@@ -37,10 +38,8 @@ db = FAISS.load_local(
 def retrieve(state):
 
     question = state["question"]
-    docs = db.similarity_search(
-        question,
-        k=2
-    )
+
+    docs = db.similarity_search(question, k=2)
 
     retrieved_text = "\n".join(
         [doc.page_content for doc in docs]
@@ -48,9 +47,7 @@ def retrieve(state):
 
     print("\n[Retriever Node Executed]")
 
-    return {
-        "retrieved_docs": retrieved_text
-    }
+    return {"retrieved_docs": retrieved_text}
 
 
 # ----------------------
@@ -83,8 +80,22 @@ Question:
     print("\n[Generator Node Executed]")
 
     return {
-        "answer": response.content
+        "answer": response.content,
+        "retries": state.get("retries", 0) + 1
     }
+
+
+# ----------------------
+# Node 3: Check Answer
+# ----------------------
+
+def check_answer(state):
+
+    if "i don't know" in state["answer"].lower() and state["retries"] < 2:
+        print("\n[Retrying...]")
+        return "retry"
+
+    return "end"
 
 
 # ----------------------
@@ -98,14 +109,15 @@ graph.add_node("generate_answer", generate_answer)
 
 graph.set_entry_point("retrieve")
 
-graph.add_edge(
-    "retrieve",
-    "generate_answer"
-)
+graph.add_edge("retrieve", "generate_answer")
 
-graph.add_edge(
+graph.add_conditional_edges(
     "generate_answer",
-    END
+    check_answer,
+    {
+        "retry": "retrieve",
+        "end": END
+    }
 )
 
 app = graph.compile()
@@ -127,7 +139,8 @@ if __name__ == "__main__":
             break
 
         result = app.invoke({
-            "question": question
+            "question": question,
+            "retries": 0
         })
 
         print("\nAnswer:")

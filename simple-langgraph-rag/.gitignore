@@ -19,6 +19,9 @@ env/
 # Vector store (generated locally)
 vectorstore/
 
+# Generated files
+dag.png
+
 # IDE
 .vscode/
 .idea/

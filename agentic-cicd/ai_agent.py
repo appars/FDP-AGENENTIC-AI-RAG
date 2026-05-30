@@ -1,6 +1,10 @@
-from langchain.agents import initialize_agent, AgentType
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 from tools import read_logs, retry_recommendation
+from dotenv import load_dotenv
+import os
+
+load_dotenv(override=True)
 
 llm = ChatOpenAI(
     model="gpt-5-mini",
@@ -12,11 +16,9 @@ tools = [
     retry_recommendation
 ]
 
-agent = initialize_agent(
-    tools=tools,
-    llm=llm,
-    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-    verbose=True
+agent = create_agent(
+    model=llm,
+    tools=tools
 )
 
 prompt = '''
@@ -37,11 +39,21 @@ Return only one word:
 GO, RETRY, STOP
 '''
 
-response = agent.invoke(prompt)
+if __name__ == "__main__":
+    if not os.path.exists("test-results.log"):
+        decision = "STOP"
+        with open("decision.txt", "w") as f:
+            f.write(decision)
+        print("Agent Decision:", decision)
+        raise SystemExit(0)
 
-decision = response["output"].strip()
+    response = agent.invoke({
+        "messages": [{"role": "user", "content": prompt}]
+    })
 
-with open("decision.txt", "w") as f:
-    f.write(decision)
+    decision = response["messages"][-1].content.strip()
 
-print("Agent Decision:", decision)
+    with open("decision.txt", "w") as f:
+        f.write(decision)
+
+    print("Agent Decision:", decision)

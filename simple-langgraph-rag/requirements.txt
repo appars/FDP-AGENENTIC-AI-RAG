@@ -1,10 +1,8 @@
 langgraph
 langchain
+langchain-text-splitters
 langchain-community
 langchain-openai
 faiss-cpu
 openai
 tiktoken
-sentence-transformers
-pypdf
-typing-extensions

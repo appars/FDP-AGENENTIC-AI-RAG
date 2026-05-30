@@ -1,10 +1,12 @@
-from langchain_community.document_loaders import TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
+from langchain_core.documents import Document
 
-loader = TextLoader("docs/knowledge.txt")
-documents = loader.load()
+with open("docs/knowledge.txt", "r") as f:
+    text = f.read()
+
+documents = [Document(page_content=text)]
 
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=300,

@@ -37,7 +37,6 @@ db = FAISS.load_local(
 def retrieve(state):
 
     question = state["question"]
-
     docs = db.similarity_search(
         question,
         k=2
@@ -59,7 +58,7 @@ def retrieve(state):
 # ----------------------
 
 llm = ChatOpenAI(
-    model="gpt-5-mini",
+    model="gpt-4o-mini",
     temperature=0
 )
 
@@ -116,18 +115,20 @@ app = graph.compile()
 # Run Application
 # ----------------------
 
-while True:
+if __name__ == "__main__":
 
-    question = input(
-        "\nAsk Question (type exit to quit): "
-    )
+    while True:
 
-    if question.lower() == "exit":
-        break
+        question = input(
+            "\nAsk Question (type exit to quit): "
+        )
 
-    result = app.invoke({
-        "question": question
-    })
+        if question.lower() == "exit":
+            break
 
-    print("\nAnswer:")
-    print(result["answer"])
+        result = app.invoke({
+            "question": question
+        })
+
+        print("\nAnswer:")
+        print(result["answer"])

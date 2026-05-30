@@ -14,6 +14,22 @@ Pipeline definition: [Jenkinsfile](Jenkinsfile)
 
 ---
 
+## Pre-step: Install Jenkins and Essential Plugins
+
+Before running the pipeline, install Jenkins and add the essential plugins:
+
+1. Install Jenkins on your machine or server
+2. Open Jenkins and complete the initial setup
+3. Install these essential plugins:
+	- Pipeline
+	- Git
+	- Credentials Binding
+	- Workspace Cleanup
+	- Blue Ocean
+4. Create a pipeline job and point it to this repository
+
+---
+
 ## CI/CD Flow (Jenkins Stages)
 
 ### 1) Install Dependencies
@@ -40,22 +56,6 @@ Pipeline definition: [Jenkinsfile](Jenkinsfile)
 
 ### 6) Deploy
 - Runs [deploy.sh](deploy.sh)
-
----
-
-## Which `.py` file is used where?
-
-- [app.py](app.py)
-	- Used in **Build** stage (`py_compile`)
-	- Also contains `test_divide()` used in **Test** stage
-
-- [ai_agent.py](ai_agent.py)
-	- Used in **LangChain Agent Analysis** stage
-	- Calls LangChain/OpenAI model
-	- Contains the tool functions:
-		- `read_logs(log_path)`
-		- `retry_recommendation(error_text)`
-	- Writes decision to `decision.txt`
 
 ---
 

@@ -52,7 +52,7 @@ pipeline {
                 script {
 
                     def decision =
-                        readFile('decision.txt').trim()
+                        readFile('agentic-cicd/decision.txt').trim()
 
                     echo "Decision: ${decision}"
 

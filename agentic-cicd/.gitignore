@@ -1,0 +1,82 @@
+# =========================================================
+# Monorepo .gitignore template (Python-first, multi-project)
+# Location: repo root (agentic-cicd)
+# =========================================================
+
+# ---------- OS / editor ----------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ---------- Logs / temp ----------
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# ---------- Secrets / env ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Python (all projects) ----------
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+
+# Virtual environments (root or nested apps/libs)
+.venv/
+venv/
+env/
+ENV/
+**/.venv/
+**/venv/
+
+# Packaging / build
+**/build/
+**/dist/
+**/*.egg-info/
+**/.eggs/
+
+# Test / coverage / tooling caches
+**/.pytest_cache/
+**/.coverage
+**/.coverage.*
+**/htmlcov/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.pyre/
+**/.hypothesis/
+
+# ---------- Node/JS (for frontend/services in monorepo) ----------
+**/node_modules/
+**/.pnpm-store/
+**/.npm/
+**/.yarn/
+**/.next/
+**/.nuxt/
+**/dist/
+**/coverage/
+
+# ---------- Java/Kotlin ----------
+**/.gradle/
+**/build/
+**/out/
+
+# ---------- Go ----------
+**/bin/
+**/.coverprofile
+
+# ---------- Rust ----------
+**/target/
+
+# ---------- Terraform ----------
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+
+# ---------- Project-specific runtime artifacts ----------
+decision.txt
+test-results.log

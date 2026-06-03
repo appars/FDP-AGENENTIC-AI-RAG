@@ -1,26 +1,50 @@
-# Book Recommendation System with LangChain
+# Book Recommendation System with LangChain + RAG
 
-A comprehensive LangChain tutorial demonstrating real-world RAG (Retrieval-Augmented Generation) patterns using the Kaggle Book Recommendation Dataset.
+A LangChain tutorial demonstrating real-world RAG (Retrieval-Augmented Generation) patterns using the Kaggle Book Recommendation Dataset and Qdrant vector database.
 
-## 📚 Overview
+## Overview
 
 This project implements a complete book recommendation system that showcases:
-- Document loading and injection
+- Document loading with LangChain CSVLoader
+- Qdrant vector store for semantic book retrieval (RAG)
 - LangChain Expression Language (LCEL) chaining
-- Control flow and routing
+- Control flow and routing with RunnableBranch
+- Generate-Refine two-step pipeline
 - Multi-turn conversation with memory
 - Chain serialization and deserialization
 
-**Dataset**: Real Kaggle Book Recommendation Dataset (271K books, 278K users, 1.1M ratings)  
-**Processing**: Sampled to 1000 popular books for faster LLM processing
+**Dataset**: Real Kaggle Book Recommendation Dataset (271K books, 278K users, 1.1M ratings)
+**Processing**: Sampled to top 1000 books by rating count
 
 ---
 
-## 🚀 Quick Start
+## Architecture
+
+```
+User Query
+    │
+    ▼
+Qdrant Vector Store  ←── sentence-transformers/all-MiniLM-L6-v2 (embeddings)
+    │ top-3 relevant books
+    ▼
+RAG Prompt  ←── {context} + {user_query}
+    │
+    ▼
+LLM (OpenAI / Gemini / HuggingFace)
+    │
+    ▼
+StrOutputParser → Response
+```
+
+---
+
+## Quick Start
 
 ### Prerequisites
 - Python 3.8+
-- OpenAI API key (or alternative LLM provider)
+- Kaggle account (for dataset download)
+- One of: OpenAI API key, Google API key, or HuggingFace token
+- Qdrant cloud account (free tier at cloud.qdrant.io)
 
 ### Installation
 
@@ -40,310 +64,186 @@ This project implements a complete book recommendation system that showcases:
    pip install -r requirements.txt
    ```
 
-4. **Set up API key**
+4. **Set up environment variables** — create a `.env` file:
    ```bash
-   export OPENAI_API_KEY="your-api-key-here"
-   # OR create .env file in parent directory (../.env)
-   OPENAI_API_KEY=your-api-key-here
+   # LLM providers (use whichever you have)
+   OPENAI_API_KEY=sk-...
+   GOOGLE_API_KEY=...
+   HF_TOKEN=hf_...
+
+   # Qdrant remote (required)
+   QDRANT_HOST=https://your-cluster.qdrant.io
+   QDRANT_API_KEY=your-qdrant-api-key
    ```
 
-5. **Download dataset** (if not already present)
-   - Download from: https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset
-   - Extract CSV files to `data/` folder:
-     - `data/Books.csv`
-     - `data/Ratings.csv`
-     - `data/Users.csv`
+5. **Run the notebook**
+   ```bash
+   jupyter notebook book_recommendation.ipynb
+   ```
+   Execute cells sequentially from top to bottom.
 
 ---
 
-## 📖 Step-by-Step Guide
+## Notebook Structure
 
-### Step 1: Download the Dataset
-- Manual download from Kaggle or use Kaggle API
-- Place CSV files in the `data/` directory
+### Cell 1 — Install Dependencies
+Installs all packages from `requirements.txt` and downloads the Kaggle dataset.
 
-### Step 2: Setup and Imports
-- Install LangChain, OpenAI, and supporting libraries
-- Load environment variables (API keys)
-- Import core dependencies
+### Cell 2 — Setup and Imports
+Loads environment variables and imports core libraries.
 
-### Step 3: Load and Explore Dataset
+### Cell 3 — Load and Explore Dataset
 ```python
-# Load Kaggle datasets
 books_df = pd.read_csv('data/Books.csv', encoding='latin-1')
 ratings_df = pd.read_csv('data/Ratings.csv')
 users_df = pd.read_csv('data/Users.csv')
 ```
-Explore the structure, shape, and sample rows from each dataset.
 
-### Step 4: Prepare Data for LangChain
-- Sample top 1000 books by rating count
-- Rename columns for clarity
-- Save as `books_for_llm.csv` for document loader
+### Cell 4 — Prepare Data
+Samples top 1000 books by rating count and saves to `books_for_llm.csv`.
 
-### Step 5: Model Initialization (Model Agnostic)
+### Cell 5 — Model Initialization (Model Agnostic)
 ```python
 llm = init_chat_model(
-    model="openai:gpt-4o-mini",  # Easily switch models
+    model="huggingface:TinyLlama/TinyLlama-1.1B-Chat-v1.0",
     temperature=0.7,
-    max_tokens=500
 )
 ```
+Swap the model line to switch providers — no other code changes needed.
+
 **Supported models:**
-- OpenAI: `openai:gpt-4o-mini`, `openai:gpt-4`
-- Google Gemini: `google_genai:gemini-2.5-flash-lite`
-- HuggingFace: `huggingface_hub:meta-llama/Llama-2-7b-chat-hf`
+| Provider | Model string |
+|----------|-------------|
+| OpenAI | `openai:gpt-4o-mini` |
+| Google Gemini | `google_genai:gemini-2.5-flash-lite` |
+| HuggingFace 1.1B | `huggingface:TinyLlama/TinyLlama-1.1B-Chat-v1.0` |
+| HuggingFace 3.8B | `huggingface:microsoft/Phi-3-mini-4k-instruct` |
+| HuggingFace 7B | `huggingface:HuggingFaceH4/zephyr-7b-beta` |
 
-### Step 6: Messages - Simple Conversation
-Demonstrate basic message-based conversation with system and human roles.
+### Cell 6 — Messages
+Basic message-based conversation using `SystemMessage` and `HumanMessage`.
 
-### Step 7: Document Loader
-Load CSV documents using LangChain's CSVLoader:
+### Cell 7 — Document Loader
+Loads `books_for_llm.csv` using `CSVLoader` — each row becomes a `Document` object.
+
+### Cell 8 — Qdrant Vector Store
 ```python
-loader = CSVLoader(file_path="books_for_llm.csv")
-documents = loader.load()
+vectorstore = QdrantVectorStore.from_documents(
+    documents, embeddings,
+    url=QDRANT_URL, api_key=QDRANT_API_KEY,
+    collection_name="books",
+)
+retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 ```
-Each row becomes a Document object with structured content.
+Embeds all 992 books and inserts into Qdrant. The retriever fetches top 3 semantically relevant books per query — **not all 992**.
 
-### Step 8: Inject Documents into Prompts
-Create a `ChatPromptTemplate` that includes the book catalog context:
+### Cell 9 — Retrieve & Inject into Prompt (RAG)
+Demonstrates retrieval in action and defines the RAG prompt template.
+
+### Cell 10 — LCEL RAG Chain
 ```python
-recommendation_prompt = ChatPromptTemplate.from_template(
-    "You are a book recommendation expert...\n"
-    "Here are available books:\n{books_context}\n"
-    "User request: {user_query}\n..."
+rag_chain = (
+    {"context": retriever | format_books, "user_query": lambda x: x}
+    | recommendation_prompt
+    | llm
+    | StrOutputParser()
 )
 ```
-Books context is **hardcoded** into the prompt template for consistency.
+Full RAG pipeline: query → Qdrant retrieval → prompt → LLM → answer.
 
-### Step 9: Basic LCEL Chaining
-Create a simple chain: **Prompt → LLM → Output Parser**
-```python
-simple_chain = recommendation_prompt | llm | StrOutputParser()
-result = simple_chain.invoke({"user_query": "..."})
-```
+### Cell 11 — Control Flow (RunnableBranch)
+Routes to recommendation or analysis chain based on keywords in the query.
 
-### Step 10: Control Flow - RunnableBranch
-Route to different chains based on user intent:
-```python
-router = RunnableBranch(
-    (lambda x: "recommend" in x["user_query"].lower(), recommendation_chain),
-    (lambda x: "compare" in x["user_query"].lower(), analysis_chain),
-    recommendation_chain  # default
-)
-```
+### Cell 12 — Generate-Refine Pipeline
+Two-step chain: generate initial recommendations → refine with more detail.
 
-### Step 11: Generate-Refine Pipeline
-Two-step process:
-1. **Generate**: Initial recommendations using the prompt
-2. **Refine**: Polish recommendations with formatting and details
+### Cell 13 — Message History Memory
+Multi-turn conversation with sliding window of last 4 messages (2 exchanges) to stay within token limits.
 
-```python
-generate_refine_chain = (
-    recommend_chain
-    | (lambda x: {"recommendation": x})
-    | refine_chain
-)
-```
-
-### Step 12: Message History Memory
-Multi-turn conversations with persistent memory:
-```python
-memory_chain = RunnableWithMessageHistory(
-    conversational_chain,
-    get_session_history,
-    input_messages_key="user_query",
-    history_messages_key="history"
-)
-```
-The model remembers previous interactions within a session.
-
-### Step 13: Serialization
-Save and load chains:
-```python
-# Save
-serialized = dumps(recommendation_prompt)
-with open("book_chain_kaggle.json", "w") as f:
-    f.write(serialized)
-
-# Load
-with open("book_chain_kaggle.json", "r") as f:
-    loaded_serialized = f.read()
-loaded_prompt = loads(loaded_serialized, allowed_objects="all")
-loaded_chain = loaded_prompt | llm | StrOutputParser()
-```
+### Cell 14 — Serialization
+Save and reload the prompt chain as JSON.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 book-recommendation-system/
-├── README.md                           # This file
-├── book_recommendation.ipynb           # Main Jupyter notebook
-├── book_recommendation.py              # Python script version
-├── book_chain_kaggle.json              # Serialized prompt
-├── books_for_llm.csv                   # Sampled book catalog
-├── data/
-│   ├── Books.csv                       # Full book dataset
-│   ├── Ratings.csv                     # Rating records
-│   └── Users.csv                       # User information
-└── docs/
-    ├── README.txt                      # Original documentation
-    ├── DATASETS_GUIDE.pdf              # Dataset details
-    └── QUICK_REFERENCE.pdf             # Quick reference guide
+├── README.md                        # This file
+├── requirements.txt                 # All dependencies
+├── book_recommendation.ipynb        # Main Jupyter notebook
+├── book_recommendation_openai.ipynb # OpenAI version
+├── book_chain_kaggle.json           # Serialized prompt (generated)
+├── books_for_llm.csv                # Sampled book catalog (generated)
+└── data/
+    ├── Books.csv                    # Full book dataset
+    ├── Ratings.csv                  # Rating records
+    └── Users.csv                    # User information
 ```
 
 ---
 
-## 🛠️ Usage
+## Key Concepts
 
-### Run Jupyter Notebook
+| Concept | Cell | Description |
+|---------|------|-------------|
+| Messages | 6 | Structured conversation with system/human roles |
+| Document Loader | 7 | Load CSV rows as LangChain Documents |
+| Qdrant RAG | 8 | Semantic search — retrieve only relevant books |
+| LCEL Chain | 10 | `retriever \| prompt \| llm \| parser` pipeline |
+| RunnableBranch | 11 | Conditional routing based on query intent |
+| Generate-Refine | 12 | Multi-step LLM pipeline |
+| Memory | 13 | Multi-turn conversation with history trimming |
+| Serialization | 14 | Save/load chains as JSON |
+
+---
+
+## Why RAG Instead of Stuffing?
+
+Without RAG, all 992 books (~330K characters, ~175K tokens) are dumped into every prompt. This exceeds every model's context window and makes every call extremely slow.
+
+With Qdrant RAG, only 3 relevant books (~150 tokens) are sent per query:
+
+| | Without RAG | With Qdrant RAG |
+|--|------------|----------------|
+| Tokens per call | ~175,000 | ~150 |
+| Fits in model context | No | Yes |
+| Speed | Very slow | Fast |
+
+---
+
+## Troubleshooting
+
+**401 Unauthorized (HuggingFace)**
+The notebook calls `huggingface_hub.login(token=HF_TOKEN)` automatically. Ensure `HF_TOKEN` is set in your `.env` file.
+
+**Token limit exceeded**
+Switch to a smaller model or reduce `k` in the retriever (`search_kwargs={"k": 2}`).
+
+**ModuleNotFoundError**
 ```bash
-jupyter notebook book_recommendation.ipynb
-```
-Execute cells sequentially to see each LangChain concept in action.
-
-### Run Python Script
-```bash
-python book_recommendation.py
+pip install -r requirements.txt
 ```
 
-### Switch Models
-In Cell 5, uncomment/comment different model options:
-```python
-# Option 1: OpenAI
-model="openai:gpt-4o-mini"
+**CSV File Not Found**
+Re-run Cell 1 which downloads and extracts the Kaggle dataset automatically.
 
-# Option 2: Google Gemini
-model="google_genai:gemini-2.5-flash-lite"
-
-# Option 3: HuggingFace
-model="huggingface_hub:meta-llama/Llama-2-7b-chat-hf"
-```
+**Qdrant connection error**
+Verify `QDRANT_HOST` and `QDRANT_API_KEY` in your `.env` file. Get free credentials at cloud.qdrant.io.
 
 ---
 
-## 🔑 Key Concepts Demonstrated
+## Environment Variables
 
-| Concept | Location | Purpose |
-|---------|----------|---------|
-| **Messages** | Step 6 | Structured conversation with roles |
-| **Document Loader** | Step 7 | Load external data (CSV) |
-| **Prompt Injection** | Step 8 | Embed context into prompts |
-| **LCEL Chaining** | Step 9 | Compose modular pipelines |
-| **Control Flow** | Step 10 | Route based on conditions |
-| **Generate-Refine** | Step 11 | Multi-stage processing |
-| **Memory/History** | Step 12 | Persistent conversation context |
-| **Serialization** | Step 13 | Save/load chains |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `QDRANT_HOST` | Yes | Qdrant cluster URL |
+| `QDRANT_API_KEY` | Yes | Qdrant API key |
+| `HF_TOKEN` | For HF models | HuggingFace access token |
+| `OPENAI_API_KEY` | For OpenAI | OpenAI API key |
+| `GOOGLE_API_KEY` | For Gemini | Google API key |
 
 ---
 
-## ⚙️ Configuration
-
-### Environment Variables
-```bash
-# Required
-OPENAI_API_KEY=sk-...
-
-# Optional (for other providers)
-GOOGLE_API_KEY=...
-HUGGINGFACE_API_TOKEN=...
-```
-
-### Model Parameters
-```python
-llm = init_chat_model(
-    model="openai:gpt-4o-mini",
-    temperature=0.7,        # 0-1: Lower = deterministic, Higher = creative
-    max_tokens=500          # Max response length
-)
-```
-
----
-
-## 📊 Performance Notes
-
-- **Dataset**: Sampled to 1000 books (from 271K) for demo purposes
-- **Context Size**: ~500KB book catalog hardcoded into prompt
-- **Response Time**: 2-5 seconds per request (depends on LLM)
-- **Cost**: OpenAI free trial credits (~$18 value)
-
----
-
-## 🐛 Troubleshooting
-
-### Missing API Key
-```
-Error: Could not authenticate with OpenAI
-```
-**Solution**: Set `OPENAI_API_KEY` environment variable
-
-### Module Import Error
-```
-ModuleNotFoundError: No module named 'langchain'
-```
-**Solution**: Run `pip install -r requirements.txt`
-
-### CSV File Not Found
-```
-FileNotFoundError: data/Books.csv
-```
-**Solution**: Download Kaggle dataset and place in `data/` folder
-
-### Rate Limit Error
-```
-RateLimitError: 429 Too Many Requests
-```
-**Solution**: Wait 1-2 minutes before retrying
-
----
-
-## 📚 Learning Resources
-
-- [LangChain Documentation](https://python.langchain.com/)
-- [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
-- [Kaggle Book Dataset](https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset)
-- [LCEL Tutorial](https://python.langchain.com/docs/expression_language/)
-
----
-
-## ✅ Checklist for Running
-
-- [ ] Virtual environment activated
-- [ ] Dependencies installed (`pip install -r requirements.txt`)
-- [ ] OpenAI API key set (`export OPENAI_API_KEY=...`)
-- [ ] Dataset files in `data/` folder
-- [ ] Jupyter notebook installed (`pip install jupyter`)
-- [ ] Start notebook: `jupyter notebook`
-
----
-
-## 🎯 Next Steps
-
-1. **Customize prompts**: Modify system messages in each step
-2. **Add filters**: Implement book filtering by genre, year, etc.
-3. **Integrate database**: Replace CSV with vector DB (Chroma, Pinecone)
-4. **Deploy**: Create Flask/FastAPI endpoint
-5. **Monitor**: Log and analyze model responses
-
----
-
-## 📄 License
-
-This project uses the Kaggle Book Recommendation Dataset. See [docs/DATASETS_GUIDE.pdf](docs/DATASETS_GUIDE.pdf) for dataset details.
-
----
-
-## 📞 Support
-
-For issues or questions:
-1. Check [docs/README.txt](docs/README.txt)
-2. Review [docs/QUICK_REFERENCE.pdf](docs/QUICK_REFERENCE.pdf)
-3. Refer to LangChain docs: https://python.langchain.com/
-
----
-
-**Last Updated**: May 28, 2026  
-**LangChain Version**: 1.3+  
+**LangChain Version**: 0.3+
 **Python Version**: 3.8+

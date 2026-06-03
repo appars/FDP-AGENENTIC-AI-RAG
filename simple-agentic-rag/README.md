@@ -1,140 +1,90 @@
-# Simple Agentic RAG using LangChain
+# Simple Agentic RAG
 
-## Overview
+A minimal **Agentic RAG (Retrieval-Augmented Generation)** system built with LangChain and FAISS. The agent decides at runtime whether to retrieve documents before answering — making it more efficient than naive RAG that always retrieves.
 
-This project demonstrates a **very simple Agentic RAG (Retrieval Augmented Generation)** system using:
+---
 
-- LangChain Agent
-- FAISS Vector Database
-- OpenAI LLM
-- Embeddings
-- Tool Calling
+## How It Works
 
-The agent decides:
+```
+Traditional RAG:   Question → Always retrieve → Answer
 
-1. Whether retrieval is required
-2. When to search documents
-3. How to answer using retrieved context
+Agentic RAG:       Question → Agent decides
+                                  ├─ Need retrieval? → search_docs tool → Answer with context
+                                  └─ No retrieval needed? → Answer directly
+```
+
+**Example:**
+- *"What is 2 + 2?"* → Agent answers directly (no retrieval)
+- *"How many students are in DISE?"* → Agent calls `search_docs`, retrieves from vector store, answers with context
 
 ---
 
 ## Project Structure
 
+```
 simple-agentic-rag/
-│
-├── app.py
-├── ingest.py
-├── agent_rag.py
+├── simple_agentic_rag.ipynb   # Notebook walkthrough
 ├── docs/
-│   └── knowledge.txt
+│   └── knowledge.txt          # Knowledge base documents
 ├── requirements.txt
-└── vectorstore/
+└── vectorstore/               # FAISS index (generated)
+```
 
 ---
 
-## Installation
+## Prerequisites
 
-Create virtual environment:
+- Python 3.9+
+- A HuggingFace account with a valid API token → [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+
+---
+
+## Setup
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+pip install jupyter
+jupyter notebook simple_agentic_rag.ipynb
 ```
 
 ---
 
-## Configure API Key
+## Run
 
-Set OpenAI API key:
+Open `simple_agentic_rag.ipynb` and run all cells top to bottom.
 
-Linux/Mac:
-
-```bash
-export OPENAI_API_KEY="your_key"
+Set your HuggingFace token in **Cell 2**:
+```python
+HF_TOKEN = "hf_your_token_here"
 ```
 
-Windows:
+**Models used:**
+| Purpose | Model |
+|---|---|
+| Embeddings | `sentence-transformers/all-MiniLM-L12-v2` (local cache) |
+| LLM | `Qwen/Qwen2.5-7B-Instruct` (HuggingFace Inference API) |
 
-```cmd
-set OPENAI_API_KEY=your_key
+---
+
+## Dependencies
+
+```
+langchain
+langchain-community
+langchain-huggingface
+langchain-core
+langchain-text-splitters
+faiss-cpu
+sentence-transformers
+tiktoken
+pypdf
 ```
 
 ---
 
-## Step 1: Create Vector Database
+## Knowledge Base
 
-Run:
-
-```bash
-python3 ingest.py
-```
-
-Expected output:
-
-```text
-Vector DB created successfully
-```
-
----
-
-## Step 2: Run Agentic RAG
-
-Run:
-
-```bash
-python3 agent_rag.py
-```
-
-Example questions:
-
-```text
-What is RAG?
-What is FAISS?
-What is LangChain?
-```
-
-Type:
-
-```text
-exit
-```
-
-to quit.
-
----
-
-## Why This Is Agentic RAG
-
-Traditional RAG:
-
-Question → Retrieve → Answer
-
-Agentic RAG:
-
-Question
-   ↓
-Agent decides:
-Need retrieval?
-   ↓
-YES → Search documents
-NO → Answer directly
-
-Example:
-
-Question:
-What is 2 + 2?
-
-Agent:
-No retrieval needed
-
-Question:
-What is FAISS?
-
-Agent:
-Uses search_docs tool
+The default knowledge base (`docs/knowledge.txt`) contains information about a fictitious department (DISE). Replace it with any plain text file to build a RAG system over your own documents, then re-run Cell 3 to rebuild the vector store.

@@ -1,0 +1,13 @@
+kaggle
+langchain
+langchain-core
+langchain-openai
+langchain-google-genai
+langchain-huggingface
+langchain-community
+langchain-qdrant
+qdrant-client
+sentence-transformers
+python-dotenv
+pandas
+pydantic

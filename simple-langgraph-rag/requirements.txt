@@ -8,3 +8,6 @@ openai
 tiktoken
 matplotlib
 networkx
+langchain-huggingface 
+langchain-google-genai 
+python-dotenv 

@@ -1,0 +1,15 @@
+langchain
+langchain-community
+langchain-core
+langchain-text-splitters
+langchain-huggingface
+langchain-google-genai
+langchain-openai
+langchain-anthropic
+huggingface_hub
+faiss-cpu
+tiktoken
+pypdf
+sentence-transformers
+datasets
+ragas>=0.2

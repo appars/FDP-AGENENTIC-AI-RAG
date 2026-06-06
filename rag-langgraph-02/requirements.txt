@@ -11,3 +11,5 @@ networkx
 langchain-huggingface 
 langchain-google-genai 
 python-dotenv 
+requests
+ragas

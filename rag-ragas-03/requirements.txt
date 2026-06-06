@@ -12,4 +12,5 @@ tiktoken
 pypdf
 sentence-transformers
 datasets
-ragas>=0.2
+ragas
+requests

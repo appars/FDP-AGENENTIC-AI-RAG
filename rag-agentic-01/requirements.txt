@@ -1,13 +1,14 @@
 langchain
 langchain-community
-langchain-openai
 langchain-google-genai
 langchain-core
 langchain-text-splitters
 langchain-huggingface
 huggingface_hub
+google.colab
 faiss-cpu
 tiktoken
 pypdf
 sentence-transformers
+requirements
 

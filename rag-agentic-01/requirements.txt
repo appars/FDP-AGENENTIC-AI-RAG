@@ -10,5 +10,5 @@ faiss-cpu
 tiktoken
 pypdf
 sentence-transformers
-requirements
+requests
 

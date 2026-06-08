@@ -1,0 +1,15 @@
+Create a Streamlit chatbot for professors.
+The chatbot acts as an AI Teaching Assistant. Use Gemini API gemini-2.5-flash
+
+Requirements:
+- Upload syllabus pdf file
+- Chat interface
+- Generate:
+   explanations
+   MCQs
+   assignments
+   References
+- Include topic selection
+- Use Python and Streamlit only
+- Keep code modular and very simple since its for a demo
+

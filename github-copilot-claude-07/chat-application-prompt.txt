@@ -1,6 +1,7 @@
 Create a Streamlit chatbot for professors.
-The chatbot acts as an AI Teaching Assistant. Use Gemini API gemini-2.5-flash
-
+The chatbot acts as an AI Teaching Assistant. 
+Use Gemini API gemini-2.5-flash or update the code to use HF model TinyLlama/TinyLlama-1.1B-Chat-v1.0 with HF_TOKEN
+Create a new python file.
 Requirements:
 - Upload syllabus pdf file
 - Chat interface

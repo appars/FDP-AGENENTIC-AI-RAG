@@ -1,4 +1,6 @@
-# Simple Agentic RAG
+# Simple Agentic RAG — DQE Knowledge Assistant
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kumarsirish/FDP-AGENENTIC-AI-RAG/blob/main/rag-agentic-01/fictional-depatment-rag-agentic.ipynb)
 
 A minimal **Agentic RAG (Retrieval-Augmented Generation)** system built with LangChain and FAISS. The agent decides at runtime whether to retrieve documents before answering — making it more efficient than naive RAG that always retrieves.
 
@@ -10,62 +12,100 @@ A minimal **Agentic RAG (Retrieval-Augmented Generation)** system built with Lan
 Traditional RAG:   Question → Always retrieve → Answer
 
 Agentic RAG:       Question → Agent decides
-                                  ├─ Need retrieval? → search_docs tool → Answer with context
-                                  └─ No retrieval needed? → Answer directly
+                                  ├─ DQE-specific? → search_answers tool → FAISS retrieval → Answer
+                                  └─ General knowledge? → Answer directly
 ```
 
-**Example:**
-- *"What is 2 + 2?"* → Agent answers directly (no retrieval)
-- *"How many students are in DISE?"* → Agent calls `search_docs`, retrieves from vector store, answers with context
+**Example queries:**
+- *"What is DQE?"* → Agent calls `search_answers`, retrieves from vector store, answers with context
+- *"How many students does DQE have?"* → Agent retrieves and answers: ~140 students
+- *"What is quantum computing?"* → Agent answers directly from LLM knowledge (no retrieval)
+
+---
+
+## Knowledge Base
+
+The knowledge base contains information about the **Department of Quantum Engineering (DQE)**, a fictional department. Topics covered:
+
+| Category | Details |
+|---|---|
+| Overview | 140 students, 20 professors, 5 courses, applied quantum computing |
+| Courses | Foundations of Quantum AI (PG), Quantum Machine Learning (UG), IBM Qiskit, PennyLane |
+| Hardware | IBM Quantum Network, Amazon Braket (cloud access for all students) |
+| Research | Quantum AI, QNNs, Quantum Reinforcement Learning (QRL) |
+| Project | QuLearn — hybrid classical-quantum models for drug discovery & materials science |
 
 ---
 
 ## Project Structure
 
 ```
-simple-agentic-rag/
-├── simple_agentic_rag.ipynb   # Notebook walkthrough
-├── docs/
-│   └── knowledge.txt          # Knowledge base documents
+rag-agentic-01/
+├── fictional-depatment-rag-agentic.ipynb   # Main notebook
 ├── requirements.txt
-└── vectorstore/               # FAISS index (generated)
+└── vectorstore/                             # FAISS index (generated at runtime)
 ```
 
 ---
 
 ## Prerequisites
 
-- Python 3.9+
-- A HuggingFace account with a valid API token → [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+- Python 3.11+
+- HuggingFace API token → [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+- Google Gemini API key (optional, alternative LLM backend)
 
 ---
 
 ## Setup
 
+**Option A — Run in Google Colab (recommended):**
+
+Click the "Open in Colab" badge above. Add your secrets in Colab's Secrets panel (key icon in sidebar):
+- `HF_TOKEN` — HuggingFace API token
+- `GEMINI_API_KEY` — Google Gemini API key (optional)
+
+**Option B — Run locally:**
+
 ```bash
-python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install python-dotenv
 pip install -r requirements.txt
-pip install jupyter
-jupyter notebook simple_agentic_rag.ipynb
+```
+
+Create a `.env` file in the project root:
+```
+HF_TOKEN=hf_your_token_here
+GEMINI_API_KEY=your_key_here
+```
+
+Then update Cell 5 in the notebook to load from `.env`:
+```python
+from dotenv import load_dotenv
+load_dotenv()
+HF_TOKEN = os.environ.get("HF_TOKEN")
 ```
 
 ---
 
-## Run
+## Models Used
 
-Open `simple_agentic_rag.ipynb` and run all cells top to bottom.
-
-Set your HuggingFace token in **Cell 2**:
-```python
-HF_TOKEN = "hf_your_token_here"
-```
-
-**Models used:**
 | Purpose | Model |
 |---|---|
-| Embeddings | `sentence-transformers/all-MiniLM-L12-v2` (local cache) |
+| Embeddings | `sentence-transformers/all-MiniLM-L12-v2` (local) |
 | LLM | `Qwen/Qwen2.5-7B-Instruct` (HuggingFace Inference API) |
+| LLM (alt) | `gemini-2.5-flash` (Google Gemini, via `langchain-google-genai`) |
+
+---
+
+## Notebook Walkthrough
+
+| Cell | Step |
+|---|---|
+| 1 | Install dependencies from `requirements.txt` |
+| 2 | Set API keys (Colab secrets or `.env`) |
+| 3 | Define DQE knowledge base as inline text |
+| 4 | Chunk, embed, and save FAISS vector store |
+| 5 | Build `search_answers` tool + ReAct agent |
+| 6 | Query the agent |
 
 ---
 
@@ -74,17 +114,14 @@ HF_TOKEN = "hf_your_token_here"
 ```
 langchain
 langchain-community
-langchain-huggingface
 langchain-core
 langchain-text-splitters
+langchain-huggingface
+langchain-google-genai
+huggingface_hub
 faiss-cpu
 sentence-transformers
 tiktoken
 pypdf
+python-dotenv
 ```
-
----
-
-## Knowledge Base
-
-The default knowledge base (`docs/knowledge.txt`) contains information about a fictitious department (DISE). Replace it with any plain text file to build a RAG system over your own documents, then re-run Cell 3 to rebuild the vector store.
